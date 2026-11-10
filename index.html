@@ -1,0 +1,2418 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARCHFLOW // PRO — Especificação BIM, Swap de Materiais & Split Financeiro</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#08090D',
+            panel: '#10131C',
+            footerBg: '#0B0D14',
+            card: '#151924',
+            borderDark: '#1E2538',
+            borderModal: '#26304A',
+            electric: '#2563EB',
+            gold: '#D97706',
+            emerald: '#10B981'
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          boxShadow: {
+            'neumorphic-inset': 'inset 0 2px 6px rgba(0, 0, 0, 0.6)',
+            'neumorphic-deep': 'inset 0 3px 8px rgba(0, 0, 0, 0.75), inset 0 1px 2px rgba(0, 0, 0, 0.85)',
+            'electric-glow': '0 0 25px -4px rgba(37, 99, 235, 0.55), 0 0 10px -2px rgba(59, 130, 246, 0.4)',
+            'gold-glow': '0 0 20px -4px rgba(217, 119, 6, 0.4), inset 0 2px 6px rgba(0, 0, 0, 0.65)',
+            'emerald-glow': '0 0 22px -4px rgba(16, 185, 129, 0.45)'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      background-color: #08090D;
+      color: #F1F5F9;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Custom Scrollbar for Right Specification Panel & Modal */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0B0D14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E2538;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2563EB;
+    }
+
+    /* Inset Neumorphic Utilities */
+    .neumorphic-card {
+      background-color: #151924;
+      border: 1px solid #1E2538;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+    }
+
+    .neumorphic-well {
+      background-color: #0B0E16;
+      border: 1px solid #1A2133;
+      box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.78);
+    }
+
+    .neumorphic-gold-inset {
+      background: linear-gradient(135deg, rgba(217, 119, 6, 0.12) 0%, rgba(18, 16, 14, 0.92) 100%);
+      border: 1px solid rgba(217, 119, 6, 0.42);
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Scanline Overlay Effect on Render Stage */
+    .scanline-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+      background:
+        linear-gradient(
+          to bottom,
+          rgba(255, 255, 255, 0),
+          rgba(255, 255, 255, 0) 50%,
+          rgba(8, 9, 13, 0.22) 50%,
+          rgba(8, 9, 13, 0.22)
+        );
+      background-size: 100% 4px;
+      overflow: hidden;
+    }
+
+    .scanline-overlay::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 140px;
+      background: linear-gradient(
+        180deg,
+        rgba(37, 99, 235, 0) 0%,
+        rgba(37, 99, 235, 0.08) 75%,
+        rgba(59, 130, 246, 0.28) 98%,
+        rgba(37, 99, 235, 0) 100%
+      );
+      animation: scanlineSweep 7.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes scanlineSweep {
+      0% {
+        transform: translateY(-160px);
+        opacity: 0;
+      }
+      15% {
+        opacity: 1;
+      }
+      85% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh);
+        opacity: 0;
+      }
+    }
+
+    /* Hotspot Pulsing Rings */
+    @keyframes hotspotPing {
+      0% {
+        transform: scale(0.95);
+        opacity: 0.9;
+      }
+      70% {
+        transform: scale(2.35);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(2.5);
+        opacity: 0;
+      }
+    }
+
+    @keyframes hotspotHalo {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.65), 0 0 18px 4px rgba(37, 99, 235, 0.55);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0), 0 0 26px 8px rgba(59, 130, 246, 0.75);
+      }
+    }
+
+    .hotspot-ring-outer {
+      animation: hotspotPing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    .hotspot-core {
+      animation: hotspotHalo 2.4s ease-in-out infinite;
+    }
+
+    /* Clay Mode Visual Filter Simulation */
+    .clay-mode-active #render-base-image {
+      filter: grayscale(100%) contrast(118%) brightness(112%) sepia(6%);
+    }
+    .clay-mode-active #clay-wireframe-overlay {
+      opacity: 0.55 !important;
+    }
+
+    /* Comparison Slider Range Styling */
+    input[type="range"].arch-scrubber {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: ew-resize;
+    }
+    input[type="range"].arch-scrubber::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #08090D;
+      border: 1px solid #1E2538;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.85);
+    }
+    input[type="range"].arch-scrubber::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #2563EB;
+      border: 2px solid #93C5FD;
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.9);
+      margin-top: -7px;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type="range"].arch-scrubber::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+      background: #3B82F6;
+    }
+
+    /* Animated Split Routing SVG Streamlines */
+    @keyframes streamFlow {
+      to {
+        stroke-dashoffset: -48;
+      }
+    }
+    .split-flow-line {
+      stroke-dasharray: 6 6;
+      animation: streamFlow 1.2s linear infinite;
+    }
+
+    /* Material Swatch Active State */
+    .swatch-btn[data-active="true"] {
+      border-color: #2563EB;
+      background: linear-gradient(180deg, rgba(37, 99, 235, 0.18) 0%, rgba(21, 25, 36, 0.95) 100%);
+      box-shadow: 0 0 16px -3px rgba(37, 99, 235, 0.45), inset 0 2px 6px rgba(0, 0, 0, 0.6);
+    }
+
+    .spec-card[data-selected="true"] {
+      border-color: rgba(37, 99, 235, 0.7);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25), inset 0 2px 6px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Subtle Blueprint Grid Pattern */
+    .blueprint-grid {
+      background-image:
+        linear-gradient(to right, rgba(30, 37, 56, 0.22) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(30, 37, 56, 0.22) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+  </style>
+</head>
+
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-[#08090D] text-slate-100 antialiased selection:bg-[#2563EB] selection:text-white">
+
+  <!-- =========================================================================
+       1. TOP HEADER BAR
+       ========================================================================= -->
+  <header class="h-16 border-b border-[#1E2538] bg-[#08090D]/95 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-30">
+    
+    <!-- Left: Brand Badge + Project Identifier -->
+    <div class="flex items-center gap-4 min-w-0">
+      <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-[#151924] border border-[#1E2538] shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]">
+        <div class="w-6 h-6 rounded bg-[#2563EB] flex items-center justify-center shadow-[0_0_12px_rgba(37,99,235,0.65)]">
+          <i data-lucide="boxes" class="w-3.5 h-3.5 text-white"></i>
+        </div>
+        <span class="font-mono text-xs font-bold tracking-widest text-white">
+          ARCHFLOW <span class="text-[#2563EB]">//</span> PRO
+        </span>
+        <span class="px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase rounded bg-[#2563EB]/15 text-blue-400 border border-[#2563EB]/30">
+          BIM-FINTECH
+        </span>
+      </div>
+
+      <div class="h-5 w-[1px] bg-[#1E2538] hidden xl:block"></div>
+
+      <div class="flex flex-col min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
+          <h1 class="text-xs sm:text-sm font-semibold text-slate-100 truncate" id="project-identifier">
+            Residência Moinhos de Vento — Living &amp; Gourmet (Revit/SketchUp Sync v2.4)
+          </h1>
+        </div>
+        <div class="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+          <span>PROJETO #POA-9942-EXEC</span>
+          <span>•</span>
+          <span>LOD 400 VERIFICADO</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Role View Switcher -->
+    <div
+      id="role-switcher"
+      class="flex items-center p-1 rounded-xl bg-[#151924] border border-[#1E2538] shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]"
+      role="tablist"
+      aria-label="Alternador de Visão de Usuário"
+    >
+      <button
+        type="button"
+        data-role="client"
+        data-surface-id="global-role"
+        data-tier="presentation"
+        data-price="218400"
+        data-supplier="all"
+        data-rt-percent="0"
+        data-layer-url="view://client-presentation"
+        class="role-tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 bg-[#2563EB] text-white shadow-[0_0_15px_rgba(37,99,235,0.45)]"
+      >
+        <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+        <span>Visão do Cliente (Apresentação)</span>
+      </button>
+
+      <button
+        type="button"
+        data-role="architect"
+        data-surface-id="global-role"
+        data-tier="xray-rt"
+        data-price="218400"
+        data-supplier="all"
+        data-rt-percent="9.08"
+        data-layer-url="view://architect-rt-xray"
+        class="role-tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 text-slate-400 hover:text-amber-300"
+      >
+        <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-[#D97706]"></i>
+        <span>Visão do Arquiteto (Raio-X de RT &amp; Split)</span>
+        <span class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#D97706]/20 text-[#D97706] border border-[#D97706]/40">
+          RT CONFIDENCIAL
+        </span>
+      </button>
+    </div>
+
+    <!-- Right: Live Total Budget Counter Box -->
+    <div
+      id="global-budget-box"
+      data-surface-id="consolidated-budget"
+      data-tier="gold-mix"
+      data-price="218400.00"
+      data-supplier="multi-split"
+      data-rt-percent="9.08"
+      data-layer-url="ledger://consolidated-bom"
+      class="flex items-center gap-4 px-4 py-1.5 rounded-xl bg-[#151924] border border-[#1E2538] shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]"
+    >
+      <div class="flex flex-col items-end">
+        <span class="text-[10px] font-semibold tracking-wider uppercase text-slate-400">
+          ORÇAMENTO CONSOLIDADO DE OBRA
+        </span>
+        <div class="flex items-baseline gap-2.5">
+          <span
+            id="total-budget-value"
+            class="font-mono text-lg font-bold tracking-tight text-white"
+            data-raw-value="218400.00"
+          >
+            R$ 218.400,00
+          </span>
+          <span
+            id="budget-delta-badge"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30"
+          >
+            <i data-lucide="trending-down" class="w-3 h-3"></i>
+            - R$ 14.200 vs. Escopo Base
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </header>
+
+  <!-- =========================================================================
+       2. MAIN WORKSPACE (LEFT 65% CAD/RENDER VIEWPORT + RIGHT 35% SPEC ENGINE)
+       ========================================================================= -->
+  <main class="flex-1 flex overflow-hidden">
+
+    <!-- =======================================================================
+         LEFT COLUMN (65% WIDTH) — MULTI-LAYER CAD-TO-RENDER VIEWPORT
+         ======================================================================= -->
+    <section class="w-[65%] relative bg-black flex flex-col overflow-hidden select-none">
+
+      <!-- Top Floating HUD Bar (Inside Viewport) -->
+      <div class="absolute top-4 left-4 right-4 z-20 flex items-center justify-between gap-3 pointer-events-none">
+        
+        <!-- Left HUD Telemetry Pill -->
+        <div class="pointer-events-auto flex items-center gap-3 px-3.5 py-2 rounded-xl bg-[#10131C]/85 backdrop-blur-md border border-[#1E2538] shadow-lg">
+          <div class="flex items-center gap-2">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2563EB] opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#2563EB]"></span>
+            </span>
+            <span class="font-mono text-xs font-medium text-slate-200">
+              SketchUp Viewport Locked: <strong class="text-white">Camera_01_Living</strong>
+            </span>
+          </div>
+          <span class="text-slate-600">|</span>
+          <div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#151924] border border-[#1E2538]">
+            <i data-lucide="cpu" class="w-3.5 h-3.5 text-[#2563EB]"></i>
+            <span class="font-mono text-[11px] text-blue-400 font-semibold">
+              4K ControlNet Depth Pass
+            </span>
+          </div>
+        </div>
+
+        <!-- Right HUD Layer Toggles -->
+        <div class="pointer-events-auto flex items-center gap-2">
+          <button
+            type="button"
+            id="toggle-clay-mode"
+            data-surface-id="viewport-layer-clay"
+            data-tier="cad-clay"
+            data-price="0"
+            data-supplier="SketchUp LiveSync"
+            data-rt-percent="0"
+            data-layer-url="https://images.unsplash.com/photo-1600585152220-90363fe7e115?auto=format&fit=crop&w=1920&q=80"
+            class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-[#10131C]/85 backdrop-blur-md border border-[#1E2538] text-slate-300 hover:text-white hover:border-[#2563EB] transition-all shadow-lg active:scale-[0.99]"
+          >
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-[#2563EB]"></i>
+            <span>Segurar para ver Maquete Branca (SketchUp Clay)</span>
+          </button>
+
+          <button
+            type="button"
+            id="toggle-bim-xray"
+            data-surface-id="viewport-layer-mep"
+            data-tier="bim-mep"
+            data-price="0"
+            data-supplier="Revit MEP 2026"
+            data-rt-percent="0"
+            data-layer-url="layer://revit-mep-vectors"
+            data-active="false"
+            class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-[#10131C]/85 backdrop-blur-md border border-[#1E2538] text-slate-300 hover:text-white hover:border-[#2563EB] transition-all shadow-lg"
+          >
+            <i data-lucide="ruler" class="w-3.5 h-3.5 text-[#10B981]"></i>
+            <span>Cotagem &amp; Pontos Hidráulicos/Elétricos</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Central Interactive Canvas -->
+      <div
+        id="render-stage"
+        data-surface-id="main-render-canvas"
+        data-tier="gold"
+        data-price="218400"
+        data-supplier="ArchFlow Render Engine"
+        data-rt-percent="9.08"
+        data-layer-url="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85"
+        class="relative flex-1 w-full h-full overflow-hidden bg-[#06070A]"
+      >
+        <!-- Base Architectural Luxury Living/Kitchen Render Image -->
+        <img
+          id="render-base-image"
+          src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85"
+          alt="Residência Moinhos de Vento — Render Living e Ilha Gourmet"
+          class="w-full h-full object-cover object-center transition-all duration-500"
+        />
+
+        <!-- Simulated CAD Clay / Wireframe Comparison Layer (Clip-path driven by scrubber or clay button) -->
+        <div
+          id="clay-comparison-layer"
+          class="absolute inset-0 pointer-events-none transition-opacity duration-200 overflow-hidden"
+          style="clip-path: inset(0 82% 0 0);"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85"
+            alt="Maquete Branca Bruta (CAD Clay Pass)"
+            class="w-full h-full object-cover object-center grayscale contrast-125 brightness-110"
+          />
+          <div class="absolute inset-0 blueprint-grid bg-slate-900/35 mix-blend-hard-light"></div>
+          <div class="absolute top-20 left-5 px-2.5 py-1 rounded bg-black/75 border border-white/20 font-mono text-[10px] uppercase tracking-wider text-slate-200">
+            PASS: SKETCHUP CLAY // AO + WIREFRAME
+          </div>
+        </div>
+
+        <!-- Subtle Wireframe / Technical Overlay for Clay Hold Mode -->
+        <div
+          id="clay-wireframe-overlay"
+          class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-300 blueprint-grid bg-slate-950/30"
+        ></div>
+
+        <!-- BIM Cotagem & MEP (Hydraulic/Electrical) SVG Overlay (Hidden unless toggled) -->
+        <svg
+          id="bim-xray-overlay"
+          class="absolute inset-0 w-full h-full pointer-events-none z-10 hidden"
+          viewBox="0 0 1200 800"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <pattern id="mepGrid" width="60" height="60" patternUnits="userSpaceOnUse">
+              <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(16, 185, 129, 0.14)" stroke-width="1" />
+            </pattern>
+          </defs>
+          <rect width="1200" height="800" fill="url(#mepGrid)" />
+          
+          <!-- Dimension Lines: Gourmet Island -->
+          <g stroke="#10B981" stroke-width="1.5" stroke-dasharray="5,4">
+            <line x1="360" y1="490" x2="680" y2="490" />
+            <line x1="360" y1="480" x2="360" y2="500" />
+            <line x1="680" y1="480" x2="680" y2="500" />
+          </g>
+          <rect x="465" y="472" width="115" height="22" rx="4" fill="#08090D" stroke="#10B981" stroke-width="1" />
+          <text x="522" y="487" fill="#10B981" font-family="JetBrains Mono" font-size="11" text-anchor="middle">
+            L = 3.850 mm (CNC)
+          </text>
+
+          <!-- Hydraulic & Electrical Callouts -->
+          <g transform="translate(540, 545)">
+            <circle cx="0" cy="0" r="8" fill="#08090D" stroke="#2563EB" stroke-width="2" />
+            <line x1="8" y1="-8" x2="45" y2="-35" stroke="#2563EB" stroke-width="1.5" />
+            <rect x="45" y="-52" width="210" height="26" rx="4" fill="#08090D" stroke="#2563EB" stroke-width="1" />
+            <text x="54" y="-35" fill="#93C5FD" font-family="JetBrains Mono" font-size="10">
+              PTO-HID-01: Ø50mm Esgoto + Água Q/F
+            </text>
+          </g>
+
+          <g transform="translate(880, 290)">
+            <circle cx="0" cy="0" r="8" fill="#08090D" stroke="#D97706" stroke-width="2" />
+            <line x1="-8" y1="8" x2="-45" y2="35" stroke="#D97706" stroke-width="1.5" />
+            <rect x="-255" y="25" width="210" height="26" rx="4" fill="#08090D" stroke="#D97706" stroke-width="1" />
+            <text x="-245" y="42" fill="#FCD34D" font-family="JetBrains Mono" font-size="10">
+              EL-LED-04: Fita 2700K 24V Embutida
+            </text>
+          </g>
+
+          <!-- Floor Level Marker -->
+          <g transform="translate(335, 650)">
+            <polygon points="0,0 12,-14 -12,-14" fill="none" stroke="#10B981" stroke-width="1.5" />
+            <line x1="-18" y1="0" x2="18" y2="0" stroke="#10B981" stroke-width="1.5" />
+            <text x="24" y="-3" fill="#10B981" font-family="JetBrains Mono" font-size="11">
+              NÍVEL ACABADO +0,00m (Junta 1,5mm)
+            </text>
+          </g>
+        </svg>
+
+        <!-- Radial Vignette & CSS Scanline Sweep Effect -->
+        <div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#08090D]/80 via-transparent to-[#08090D]/40"></div>
+        <div class="scanline-overlay"></div>
+
+        <!-- ===================================================================
+             3 INTERACTIVE SURFACE HOTSPOT PINS
+             =================================================================== -->
+
+        <!-- PIN 1: Ilha Gourmet (top: 64%; left: 42%) -->
+        <div
+          id="pin-island"
+          data-surface-id="island"
+          data-tier="gold"
+          data-price="28400"
+          data-supplier="Marmoraria Elite Sul"
+          data-rt-percent="12"
+          data-layer-url="surface://island/dekton-laurent-4k.png"
+          style="top: 64%; left: 42%;"
+          class="surface-hotspot-pin absolute -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-3 cursor-pointer group"
+        >
+          <!-- Pulsing Electric Blue Node -->
+          <div class="relative flex items-center justify-center w-9 h-9">
+            <span class="hotspot-ring-outer absolute inset-0 rounded-full bg-[#2563EB]/60 border border-blue-400"></span>
+            <span class="hotspot-core relative w-7 h-7 rounded-full bg-[#2563EB] border-2 border-white flex items-center justify-center font-mono text-[11px] font-bold text-white shadow-lg">
+              01
+            </span>
+          </div>
+
+          <!-- Floating Glassmorphism Tag -->
+          <div class="px-3.5 py-2 rounded-xl bg-[#10131C]/85 backdrop-blur-md border border-[#2563EB]/70 shadow-[0_8px_30px_rgba(0,0,0,0.75)] group-hover:border-blue-400 group-hover:scale-[1.03] transition-all">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-white whitespace-nowrap">
+                01. Ilha Gourmet · Dekton / Quartzo
+              </span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#2563EB]/25 text-blue-300 border border-[#2563EB]/40">
+                OURO
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-3 mt-0.5 font-mono text-[10px] text-slate-300">
+              <span id="pin-island-material-label">Dekton Laurent (14,5 m²)</span>
+              <span id="pin-island-price-label" class="text-[#10B981] font-semibold">R$ 28.400</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PIN 2: Piso Principal (top: 84%; left: 28%) -->
+        <div
+          id="pin-floor"
+          data-surface-id="floor"
+          data-tier="gold"
+          data-price="94200"
+          data-supplier="Galeria Revestimentos Sul"
+          data-rt-percent="7.27"
+          data-layer-url="surface://floor/travertino-navona-120x120.png"
+          style="top: 84%; left: 28%;"
+          class="surface-hotspot-pin absolute -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-3 cursor-pointer group"
+        >
+          <!-- Pulsing Electric Blue Node -->
+          <div class="relative flex items-center justify-center w-9 h-9">
+            <span class="hotspot-ring-outer absolute inset-0 rounded-full bg-[#2563EB]/60 border border-blue-400" style="animation-delay: 0.6s;"></span>
+            <span class="hotspot-core relative w-7 h-7 rounded-full bg-[#2563EB] border-2 border-white flex items-center justify-center font-mono text-[11px] font-bold text-white shadow-lg">
+              02
+            </span>
+          </div>
+
+          <!-- Floating Glassmorphism Tag -->
+          <div class="px-3.5 py-2 rounded-xl bg-[#10131C]/85 backdrop-blur-md border border-[#1E2538] group-hover:border-[#2563EB] shadow-[0_8px_30px_rgba(0,0,0,0.75)] group-hover:scale-[1.03] transition-all">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-white whitespace-nowrap">
+                02. Piso Principal · 120x120cm (68m²)
+              </span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#2563EB]/25 text-blue-300 border border-[#2563EB]/40">
+                OURO
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-3 mt-0.5 font-mono text-[10px] text-slate-300">
+              <span id="pin-floor-material-label">Lastra Travertino Navona</span>
+              <span id="pin-floor-price-label" class="text-[#10B981] font-semibold">R$ 94.200</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PIN 3: Painel Ripado & Marcenaria (top: 36%; left: 74%) -->
+        <div
+          id="pin-woodwork"
+          data-surface-id="woodwork"
+          data-tier="gold"
+          data-price="95800"
+          data-supplier="Atelier Nogueira Marcenaria CNC"
+          data-rt-percent="10"
+          data-layer-url="surface://woodwork/freijo-natural-cnc.png"
+          style="top: 36%; left: 74%;"
+          class="surface-hotspot-pin absolute -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-3 cursor-pointer group"
+        >
+          <!-- Pulsing Electric Blue Node -->
+          <div class="relative flex items-center justify-center w-9 h-9">
+            <span class="hotspot-ring-outer absolute inset-0 rounded-full bg-[#2563EB]/60 border border-blue-400" style="animation-delay: 1.2s;"></span>
+            <span class="hotspot-core relative w-7 h-7 rounded-full bg-[#2563EB] border-2 border-white flex items-center justify-center font-mono text-[11px] font-bold text-white shadow-lg">
+              03
+            </span>
+          </div>
+
+          <!-- Floating Glassmorphism Tag -->
+          <div class="px-3.5 py-2 rounded-xl bg-[#10131C]/85 backdrop-blur-md border border-[#1E2538] group-hover:border-[#2563EB] shadow-[0_8px_30px_rgba(0,0,0,0.75)] group-hover:scale-[1.03] transition-all">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-white whitespace-nowrap">
+                03. Painel Ripado &amp; Marcenaria (24m²)
+              </span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#2563EB]/25 text-blue-300 border border-[#2563EB]/40">
+                OURO
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-3 mt-0.5 font-mono text-[10px] text-slate-300">
+              <span id="pin-woodwork-material-label">Freijó Catedral Natural</span>
+              <span id="pin-woodwork-price-label" class="text-[#10B981] font-semibold">R$ 95.800</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Floating Comparison Slider Bar -->
+      <div class="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-2xl">
+        <div
+          id="cad-render-slider"
+          data-surface-id="viewport-scrubber"
+          data-tier="comparison"
+          data-price="0"
+          data-supplier="ControlNet Sync"
+          data-rt-percent="0"
+          data-layer-url="pass://cad-to-render-blend"
+          class="px-5 py-3 rounded-2xl bg-[#10131C]/90 backdrop-blur-xl border border-[#1E2538] shadow-[0_12px_40px_rgba(0,0,0,0.85)] flex items-center gap-4"
+        >
+          <div class="flex items-center gap-2 shrink-0">
+            <i data-lucide="box" class="w-4 h-4 text-slate-400"></i>
+            <span class="text-xs font-medium text-slate-300">
+              Maquete Branca Bruta (CAD)
+            </span>
+          </div>
+
+          <div class="flex-1 flex items-center gap-3">
+            <input
+              id="cad-render-range-input"
+              type="range"
+              min="0"
+              max="100"
+              value="82"
+              data-surface-id="viewport-scrubber-input"
+              data-tier="comparison"
+              data-price="0"
+              data-supplier="ControlNet Sync"
+              data-rt-percent="0"
+              data-layer-url="pass://blend-ratio"
+              class="arch-scrubber w-full"
+              aria-label="Comparador Maquete Branca CAD versus Render Final Aprovado"
+            />
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="text-xs font-semibold text-white">
+              Render Final Aprovado
+            </span>
+            <span
+              id="scrubber-percentage-badge"
+              class="px-2 py-0.5 rounded bg-[#151924] border border-[#1E2538] font-mono text-[11px] text-[#2563EB] font-bold"
+            >
+              82% PBR
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =======================================================================
+         RIGHT COLUMN (35% WIDTH) — SPECIFICATION & MATERIAL SWAP ENGINE
+         ======================================================================= -->
+    <aside class="w-[35%] border-l border-[#1E2538] flex flex-col bg-[#10131C] shrink-0">
+
+      <!-- Subheader: Live BIM Bill-of-Materials Status -->
+      <div class="px-5 py-3 border-b border-[#1E2538] bg-[#0B0D14]/60 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-[#2563EB]"></i>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">
+            Caderno de Especificações &amp; Swap Live
+          </h2>
+        </div>
+        <span class="font-mono text-[11px] text-slate-400">
+          3 SUPERFÍCIES BIM ATIVAS
+        </span>
+      </div>
+
+      <!-- Scrollable Specification Cards Container -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-5" id="specification-cards-container">
+
+        <!-- ===================================================================
+             SPECIFICATION CARD 1: ILHA GOURMET (data-surface-id="island")
+             =================================================================== -->
+        <article
+          id="spec-card-island"
+          data-surface-id="island"
+          data-tier="gold"
+          data-price="28400"
+          data-supplier="Marmoraria Elite Sul"
+          data-rt-percent="12"
+          data-layer-url="surface://island/dekton-laurent-4k.png"
+          data-selected="true"
+          class="spec-card neumorphic-card rounded-2xl p-4 transition-all duration-200 space-y-3.5"
+        >
+          <!-- Card Header -->
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#2563EB] text-white">
+                  SUP #01
+                </span>
+                <h3 class="text-sm font-bold text-white">
+                  Ilha Gourmet &amp; Bancada Esculpida
+                </h3>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                <i data-lucide="badge-check" class="w-3.5 h-3.5 text-[#10B981]"></i>
+                <span>Fornecedor Homologado: <strong class="text-slate-200">Marmoraria Elite Sul</strong></span>
+              </p>
+            </div>
+
+            <span class="px-2.5 py-1 rounded-lg bg-[#0B0D14] border border-[#1E2538] font-mono text-[11px] font-medium text-slate-300 shrink-0">
+              14,5 m² | Corte CNC Incluso
+            </span>
+          </div>
+
+          <!-- Architect Secret RT Bar (Hidden in Client View, Revealed in Architect View) -->
+          <div
+            class="architect-rt-panel hidden neumorphic-gold-inset rounded-xl p-3 space-y-1.5"
+            data-surface-id="island"
+            data-tier="gold"
+            data-price="28400"
+            data-supplier="Marmoraria Elite Sul"
+            data-rt-percent="12"
+            data-layer-url="split://island-rt-rule"
+          >
+            <div class="flex items-center justify-between text-[11px] font-semibold text-amber-300">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="key-round" class="w-3.5 h-3.5 text-[#D97706]"></i>
+                AUDITORIA DE SPLIT &amp; RESERVA TÉCNICA
+              </span>
+              <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#D97706]/20 text-amber-300 border border-[#D97706]/40">
+                LIQUIDAÇÃO PIX D+0
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-xs font-mono text-slate-300 pt-1 border-t border-[#D97706]/25">
+              <span>Repasse Direto Fornecedor:</span>
+              <strong class="text-white">88% (R$ 24.992)</strong>
+            </div>
+            <div class="flex items-center justify-between text-xs font-mono text-[#D97706]">
+              <span>Sua Reserva Técnica (RT Automática no Pix):</span>
+              <strong class="text-amber-400 font-bold">12% (R$ 3.408)</strong>
+            </div>
+          </div>
+
+          <!-- 3 Material Swatch & Tier Buttons -->
+          <div class="grid grid-cols-3 gap-2.5 pt-1">
+            
+            <!-- Padrão Ouro -->
+            <button
+              type="button"
+              data-surface-id="island"
+              data-tier="gold"
+              data-material-name="Dekton Laurent"
+              data-price="28400"
+              data-supplier="Marmoraria Elite Sul"
+              data-rt-percent="12"
+              data-layer-url="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85"
+              data-active="true"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                    Padrão Ouro
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-[#2563EB]"></span>
+                </div>
+                <!-- Swatch Texture Preview -->
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: linear-gradient(135deg, #1b1918 0%, #2c2623 45%, #b47b38 48%, #1f1d1b 52%, #121316 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-white leading-tight line-clamp-2">
+                  Dekton Laurent
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-blue-400">R$ 28.400</span>
+              </div>
+            </button>
+
+            <!-- Padrão Prata -->
+            <button
+              type="button"
+              data-surface-id="island"
+              data-tier="silver"
+              data-material-name="Quartzo Branco Prime"
+              data-price="16900"
+              data-supplier="Marmoraria Elite Sul"
+              data-rt-percent="12"
+              data-layer-url="https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=2000&q=85"
+              data-active="false"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-300">
+                    Padrão Prata
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-slate-700 group-hover:bg-slate-500"></span>
+                </div>
+                <!-- Swatch Texture Preview -->
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: linear-gradient(135deg, #e5e7eb 0%, #cbd5e1 60%, #94a3b8 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-slate-200 leading-tight line-clamp-2">
+                  Quartzo Branco Prime
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-slate-300">R$ 16.900</span>
+              </div>
+            </button>
+
+            <!-- Padrão Essencial -->
+            <button
+              type="button"
+              data-surface-id="island"
+              data-tier="essential"
+              data-material-name="Granito São Gabriel Escovado"
+              data-price="7800"
+              data-supplier="Marmoraria Elite Sul"
+              data-rt-percent="12"
+              data-layer-url="https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=2000&q=85"
+              data-active="false"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400">
+                    Essencial
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-slate-700 group-hover:bg-slate-500"></span>
+                </div>
+                <!-- Swatch Texture Preview -->
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: radial-gradient(circle at 30% 30%, #374151 0%, #1f2937 55%, #0f172a 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-slate-200 leading-tight line-clamp-2">
+                  Granito São Gabriel Escovado
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-slate-300">R$ 7.800</span>
+              </div>
+            </button>
+
+          </div>
+        </article>
+
+        <!-- ===================================================================
+             SPECIFICATION CARD 2: PISO PRINCIPAL (data-surface-id="floor")
+             =================================================================== -->
+        <article
+          id="spec-card-floor"
+          data-surface-id="floor"
+          data-tier="gold"
+          data-price="94200"
+          data-supplier="Galeria Revestimentos Sul"
+          data-rt-percent="7.27"
+          data-layer-url="surface://floor/travertino-navona-120x120.png"
+          data-selected="false"
+          class="spec-card neumorphic-card rounded-2xl p-4 transition-all duration-200 space-y-3.5"
+        >
+          <!-- Card Header -->
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#1E2538] text-blue-400 border border-[#2563EB]/40">
+                  SUP #02
+                </span>
+                <h3 class="text-sm font-bold text-white">
+                  Piso Principal · Living &amp; Gourmet
+                </h3>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                <i data-lucide="badge-check" class="w-3.5 h-3.5 text-[#10B981]"></i>
+                <span>Fornecedor Homologado: <strong class="text-slate-200">Galeria Revestimentos Sul</strong></span>
+              </p>
+            </div>
+
+            <span class="px-2.5 py-1 rounded-lg bg-[#0B0D14] border border-[#1E2538] font-mono text-[11px] font-medium text-slate-300 shrink-0">
+              68,0 m² | Junta Seca CNC 1,5mm
+            </span>
+          </div>
+
+          <!-- Architect Secret RT Bar -->
+          <div
+            class="architect-rt-panel hidden neumorphic-gold-inset rounded-xl p-3 space-y-1.5"
+            data-surface-id="floor"
+            data-tier="gold"
+            data-price="94200"
+            data-supplier="Galeria Revestimentos Sul"
+            data-rt-percent="7.27"
+            data-layer-url="split://floor-rt-rule"
+          >
+            <div class="flex items-center justify-between text-[11px] font-semibold text-amber-300">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="key-round" class="w-3.5 h-3.5 text-[#D97706]"></i>
+                AUDITORIA DE SPLIT &amp; RESERVA TÉCNICA
+              </span>
+              <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#D97706]/20 text-amber-300 border border-[#D97706]/40">
+                LIQUIDAÇÃO PIX D+0
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-xs font-mono text-slate-300 pt-1 border-t border-[#D97706]/25">
+              <span>Repasse Direto Fornecedor:</span>
+              <strong class="text-white">92,7% (R$ 87.348)</strong>
+            </div>
+            <div class="flex items-center justify-between text-xs font-mono text-[#D97706]">
+              <span>Sua Reserva Técnica (RT Automática no Pix):</span>
+              <strong class="text-amber-400 font-bold">7,3% (R$ 6.852)</strong>
+            </div>
+          </div>
+
+          <!-- 3 Material Swatch & Tier Buttons -->
+          <div class="grid grid-cols-3 gap-2.5 pt-1">
+            
+            <!-- Padrão Ouro -->
+            <button
+              type="button"
+              data-surface-id="floor"
+              data-tier="gold"
+              data-material-name="Lastra Travertino Navona 120x120"
+              data-price="94200"
+              data-supplier="Galeria Revestimentos Sul"
+              data-rt-percent="7.27"
+              data-layer-url="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85"
+              data-active="true"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                    Padrão Ouro
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-[#2563EB]"></span>
+                </div>
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: linear-gradient(135deg, #d6cfc2 0%, #bfb5a4 50%, #a39682 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-white leading-tight line-clamp-2">
+                  Lastra Travertino Navona 120x120
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-blue-400">R$ 94.200</span>
+              </div>
+            </button>
+
+            <!-- Padrão Prata -->
+            <button
+              type="button"
+              data-surface-id="floor"
+              data-tier="silver"
+              data-material-name="Porcelanato Calacatta Acetinado"
+              data-price="62400"
+              data-supplier="Galeria Revestimentos Sul"
+              data-rt-percent="7.27"
+              data-layer-url="https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=2000&q=85"
+              data-active="false"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-300">
+                    Padrão Prata
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-slate-700"></span>
+                </div>
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 48%, #94a3b8 52%, #e2e8f0 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-slate-200 leading-tight line-clamp-2">
+                  Porcelanato Calacatta Acetinado
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-slate-300">R$ 62.400</span>
+              </div>
+            </button>
+
+            <!-- Padrão Essencial -->
+            <button
+              type="button"
+              data-surface-id="floor"
+              data-tier="essential"
+              data-material-name="Porcelanato Urbano Concreto 90x90"
+              data-price="39800"
+              data-supplier="Galeria Revestimentos Sul"
+              data-rt-percent="7.27"
+              data-layer-url="https://images.unsplash.com/photo-1600585152220-90363fe7e115?auto=format&fit=crop&w=2000&q=85"
+              data-active="false"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400">
+                    Essencial
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-slate-700"></span>
+                </div>
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: linear-gradient(135deg, #64748b 0%, #475569 60%, #334155 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-slate-200 leading-tight line-clamp-2">
+                  Porcelanato Urbano Concreto 90x90
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-slate-300">R$ 39.800</span>
+              </div>
+            </button>
+
+          </div>
+        </article>
+
+        <!-- ===================================================================
+             SPECIFICATION CARD 3: PAINEL RIPADO & MARCENARIA (data-surface-id="woodwork")
+             =================================================================== -->
+        <article
+          id="spec-card-woodwork"
+          data-surface-id="woodwork"
+          data-tier="gold"
+          data-price="95800"
+          data-supplier="Atelier Nogueira Marcenaria CNC"
+          data-rt-percent="10"
+          data-layer-url="surface://woodwork/freijo-natural-cnc.png"
+          data-selected="false"
+          class="spec-card neumorphic-card rounded-2xl p-4 transition-all duration-200 space-y-3.5"
+        >
+          <!-- Card Header -->
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#1E2538] text-blue-400 border border-[#2563EB]/40">
+                  SUP #03
+                </span>
+                <h3 class="text-sm font-bold text-white">
+                  Painel Ripado &amp; Marcenaria Gourmet
+                </h3>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                <i data-lucide="badge-check" class="w-3.5 h-3.5 text-[#10B981]"></i>
+                <span>Fornecedor Homologado: <strong class="text-slate-200">Atelier Nogueira Marcenaria CNC</strong></span>
+              </p>
+            </div>
+
+            <span class="px-2.5 py-1 rounded-lg bg-[#0B0D14] border border-[#1E2538] font-mono text-[11px] font-medium text-slate-300 shrink-0">
+              24,0 m² | Usinagem 5 Eixos
+            </span>
+          </div>
+
+          <!-- Architect Secret RT Bar -->
+          <div
+            class="architect-rt-panel hidden neumorphic-gold-inset rounded-xl p-3 space-y-1.5"
+            data-surface-id="woodwork"
+            data-tier="gold"
+            data-price="95800"
+            data-supplier="Atelier Nogueira Marcenaria CNC"
+            data-rt-percent="10"
+            data-layer-url="split://woodwork-rt-rule"
+          >
+            <div class="flex items-center justify-between text-[11px] font-semibold text-amber-300">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="key-round" class="w-3.5 h-3.5 text-[#D97706]"></i>
+                AUDITORIA DE SPLIT &amp; RESERVA TÉCNICA
+              </span>
+              <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#D97706]/20 text-amber-300 border border-[#D97706]/40">
+                LIQUIDAÇÃO PIX D+0
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-xs font-mono text-slate-300 pt-1 border-t border-[#D97706]/25">
+              <span>Repasse Direto Fornecedor:</span>
+              <strong class="text-white">90% (R$ 86.220)</strong>
+            </div>
+            <div class="flex items-center justify-between text-xs font-mono text-[#D97706]">
+              <span>Sua Reserva Técnica (RT Automática no Pix):</span>
+              <strong class="text-amber-400 font-bold">10% (R$ 9.580)</strong>
+            </div>
+          </div>
+
+          <!-- 3 Material Swatch & Tier Buttons -->
+          <div class="grid grid-cols-3 gap-2.5 pt-1">
+            
+            <!-- Padrão Ouro -->
+            <button
+              type="button"
+              data-surface-id="woodwork"
+              data-tier="gold"
+              data-material-name="Lâmina Natural Freijó Catedral"
+              data-price="95800"
+              data-supplier="Atelier Nogueira Marcenaria CNC"
+              data-rt-percent="10"
+              data-layer-url="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85"
+              data-active="true"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+                    Padrão Ouro
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-[#2563EB]"></span>
+                </div>
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: repeating-linear-gradient(90deg, #7c4d2b 0px, #7c4d2b 4px, #523018 4px, #523018 7px);"
+                ></div>
+                <p class="text-xs font-semibold text-white leading-tight line-clamp-2">
+                  Lâmina Natural Freijó Catedral
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-blue-400">R$ 95.800</span>
+              </div>
+            </button>
+
+            <!-- Padrão Prata -->
+            <button
+              type="button"
+              data-surface-id="woodwork"
+              data-tier="silver"
+              data-material-name="MDF Nogueira Caiena + Laca"
+              data-price="68500"
+              data-supplier="Atelier Nogueira Marcenaria CNC"
+              data-rt-percent="10"
+              data-layer-url="https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=2000&q=85"
+              data-active="false"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-300">
+                    Padrão Prata
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-slate-700"></span>
+                </div>
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: linear-gradient(135deg, #5c3a21 0%, #3d2514 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-slate-200 leading-tight line-clamp-2">
+                  MDF Nogueira Caiena + Laca
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-slate-300">R$ 68.500</span>
+              </div>
+            </button>
+
+            <!-- Padrão Essencial -->
+            <button
+              type="button"
+              data-surface-id="woodwork"
+              data-tier="essential"
+              data-material-name="MDF Melamínico Louro Freijó"
+              data-price="44900"
+              data-supplier="Atelier Nogueira Marcenaria CNC"
+              data-rt-percent="10"
+              data-layer-url="https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=2000&q=85"
+              data-active="false"
+              class="swatch-btn group text-left p-2.5 rounded-xl bg-[#0B0D14] border border-[#1E2538] hover:border-[#2563EB]/60 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-1 mb-2">
+                  <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400">
+                    Essencial
+                  </span>
+                  <span class="w-2 h-2 rounded-full bg-slate-700"></span>
+                </div>
+                <div
+                  class="w-full h-10 rounded-lg mb-2 border border-white/10 shadow-inner"
+                  style="background: linear-gradient(135deg, #9a6b43 0%, #78502e 100%);"
+                ></div>
+                <p class="text-xs font-semibold text-slate-200 leading-tight line-clamp-2">
+                  MDF Melamínico Louro Freijó
+                </p>
+              </div>
+              <div class="mt-2 pt-1.5 border-t border-[#1E2538]/80 flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-slate-300">R$ 44.900</span>
+              </div>
+            </button>
+
+          </div>
+        </article>
+
+      </div>
+
+      <!-- Sticky Bottom Action Footer -->
+      <footer class="p-5 border-t border-[#1E2538] bg-[#0B0D14] space-y-3.5 shrink-0">
+        
+        <div class="flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-slate-300 font-medium">
+            <span class="w-2 h-2 rounded-full bg-[#10B981]"></span>
+            <span>3 Ambientes/Superfícies Configuradas</span>
+          </div>
+
+          <!-- Architect Commission Summary (Hidden in Client View, Revealed in Architect View) -->
+          <div
+            id="footer-rt-summary"
+            class="architect-rt-panel hidden flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#D97706]/15 border border-[#D97706]/40 font-mono text-xs font-bold text-[#D97706]"
+          >
+            <i data-lucide="coins" class="w-3.5 h-3.5"></i>
+            <span>Comissão RT Acumulada: <strong id="total-rt-value">R$ 19.840,00</strong></span>
+          </div>
+        </div>
+
+        <!-- Primary CTA Button -->
+        <button
+          type="button"
+          id="btn-open-approval-modal"
+          data-surface-id="checkout-split-trigger"
+          data-tier="gold-consolidated"
+          data-price="218400"
+          data-supplier="ArchFlow Split Engine"
+          data-rt-percent="9.08"
+          data-layer-url="modal://scope-split-checkout"
+          class="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-[#2563EB] via-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm tracking-wider uppercase shadow-electric-glow transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-[0.99]"
+        >
+          <i data-lucide="lock" class="w-4 h-4"></i>
+          <span>CONGELAR ESCOPO &amp; GERAR CHECKOUT SPLIT</span>
+          <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+        </button>
+
+      </footer>
+
+    </aside>
+
+  </main>
+
+  <!-- =========================================================================
+       3. SCOPE-FREEZE & PIX SPLIT ROUTING MODAL (HIDDEN BY DEFAULT)
+       ========================================================================= -->
+  <div
+    id="modal-scope-split"
+    class="fixed inset-0 z-50 hidden items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title-scope"
+  >
+    <!-- Modal Container -->
+    <div class="max-w-5xl w-full bg-[#10131C] border border-[#26304A] rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.9)] flex flex-col max-h-[92vh]">
+
+      <!-- Top Modal Bar -->
+      <div class="px-6 py-4 border-b border-[#1E2538] bg-[#0B0D14] flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-[#2563EB]/20 border border-[#2563EB]/40 flex items-center justify-center text-[#2563EB]">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold uppercase tracking-wider text-white">
+                ARCHFLOW // SMART ESCROW &amp; SCOPE LOCK
+              </span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
+                BACEN PIX SPLIT v3.1
+              </span>
+            </div>
+            <p class="text-xs text-slate-400">
+              Residência Moinhos de Vento — Protocolo de Travamento Executivo &amp; Liquidação Direta sem Bitributação
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          id="btn-close-modal"
+          data-surface-id="modal-close"
+          data-tier="none"
+          data-price="0"
+          data-supplier="none"
+          data-rt-percent="0"
+          data-layer-url="modal://close"
+          class="p-2 rounded-lg bg-[#151924] border border-[#1E2538] text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          aria-label="Fechar Modal"
+        >
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Two-Column Modal Body -->
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-[#1E2538] overflow-y-auto">
+
+        <!-- ===================================================================
+             LEFT COLUMN (50%) — LEGAL SCOPE-FREEZE & ANTI-REWORK LOCK
+             =================================================================== -->
+        <div class="p-6 flex flex-col justify-between space-y-5 bg-[#10131C]">
+          
+          <div class="space-y-4">
+            <!-- Column Header -->
+            <div class="flex items-center justify-between">
+              <h3 id="modal-title-scope" class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="file-check-2" class="w-4 h-4 text-[#2563EB]"></i>
+                <span>1. Termo de Congelamento de Volumetria e Acabamentos</span>
+              </h3>
+              <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-[#151924] border border-[#1E2538] text-slate-400">
+                REV.FINAL-04
+              </span>
+            </div>
+
+            <!-- Summary Table of the 3 Chosen Materials and Exact Prices -->
+            <div class="neumorphic-card rounded-xl overflow-hidden">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-[#1E2538] bg-[#0B0D14]/70 text-[10px] font-mono uppercase text-slate-400">
+                    <th class="py-2.5 px-3">Superfície / Fornecedor</th>
+                    <th class="py-2.5 px-3">Acabamento Aprovado</th>
+                    <th class="py-2.5 px-3 text-right">Valor Consolidado</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#1E2538]/70 text-xs">
+                  <tr
+                    data-surface-id="island"
+                    data-tier="gold"
+                    data-price="28400"
+                    data-supplier="Marmoraria Elite Sul"
+                    data-rt-percent="12"
+                    data-layer-url="bom://row-island"
+                  >
+                    <td class="py-2.5 px-3">
+                      <p class="font-semibold text-white">01. Ilha Gourmet (14,5m²)</p>
+                      <p class="text-[11px] text-slate-400">Marmoraria Elite Sul</p>
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <span class="font-medium text-slate-200" id="modal-mat-island">Dekton Laurent</span>
+                      <span class="block font-mono text-[10px] text-amber-400">Padrão Ouro · CNC</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-mono font-bold text-white" id="modal-price-island">
+                      R$ 28.400,00
+                    </td>
+                  </tr>
+
+                  <tr
+                    data-surface-id="floor"
+                    data-tier="gold"
+                    data-price="94200"
+                    data-supplier="Galeria Revestimentos Sul"
+                    data-rt-percent="7.27"
+                    data-layer-url="bom://row-floor"
+                  >
+                    <td class="py-2.5 px-3">
+                      <p class="font-semibold text-white">02. Piso Principal (68,0m²)</p>
+                      <p class="text-[11px] text-slate-400">Galeria Revestimentos Sul</p>
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <span class="font-medium text-slate-200" id="modal-mat-floor">Lastra Travertino Navona 120x120</span>
+                      <span class="block font-mono text-[10px] text-amber-400">Padrão Ouro · Junta 1,5mm</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-mono font-bold text-white" id="modal-price-floor">
+                      R$ 94.200,00
+                    </td>
+                  </tr>
+
+                  <tr
+                    data-surface-id="woodwork"
+                    data-tier="gold"
+                    data-price="95800"
+                    data-supplier="Atelier Nogueira Marcenaria CNC"
+                    data-rt-percent="10"
+                    data-layer-url="bom://row-woodwork"
+                  >
+                    <td class="py-2.5 px-3">
+                      <p class="font-semibold text-white">03. Painel &amp; Marcenaria (24,0m²)</p>
+                      <p class="text-[11px] text-slate-400">Atelier Nogueira Marcenaria CNC</p>
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <span class="font-medium text-slate-200" id="modal-mat-woodwork">Lâmina Natural Freijó Catedral</span>
+                      <span class="block font-mono text-[10px] text-amber-400">Padrão Ouro · 5 Eixos</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-mono font-bold text-white" id="modal-price-woodwork">
+                      R$ 95.800,00
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr class="border-t border-[#1E2538] bg-[#0B0D14] font-mono text-xs">
+                    <td colspan="2" class="py-2.5 px-3 font-semibold text-slate-300 uppercase">
+                      Total Consolidado do Lote Executivo
+                    </td>
+                    <td class="py-2.5 px-3 text-right text-sm font-bold text-[#10B981]" id="modal-total-price">
+                      R$ 218.400,00
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- Legal Notice Box -->
+            <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+              <i data-lucide="scale" class="w-4 h-4 text-[#D97706] shrink-0 mt-0.5"></i>
+              <p class="text-xs text-slate-200 leading-relaxed">
+                Ao assinar digitalmente, o cliente aprova a geometria 3D e os revestimentos selecionados para emissão do Projeto Executivo. Alterações posteriores de marcenaria ou layout terão custo técnico de <strong class="font-mono text-amber-300">R$ 280/hora</strong>.
+              </p>
+            </div>
+          </div>
+
+          <!-- Interactive Signature Area (id="signature-box") -->
+          <div
+            id="signature-box"
+            data-surface-id="legal-signature-pad"
+            data-tier="icp-brasil-hash"
+            data-price="218400"
+            data-supplier="ArchFlow Legal Engine"
+            data-rt-percent="0"
+            data-layer-url="legal://sha256-timestamp"
+            class="p-4 rounded-xl bg-[#0B0D14] border-2 border-dashed border-[#26304A] shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)] space-y-3"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="pen-tool" class="w-3.5 h-3.5 text-[#2563EB]"></i>
+                Assinatura Criptográfica de Escopo
+              </span>
+              <span
+                id="signature-status-pill"
+                class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-slate-300 border border-slate-700"
+              >
+                AGUARDANDO RUBRICA
+              </span>
+            </div>
+
+            <button
+              type="button"
+              id="btn-sign-scope"
+              data-surface-id="btn-digital-signature"
+              data-tier="legal-lock"
+              data-price="218400"
+              data-supplier="Client Auth"
+              data-rt-percent="0"
+              data-layer-url="action://sign-scope"
+              class="w-full py-2.5 px-4 rounded-lg bg-[#151924] hover:bg-[#2563EB] text-white border border-[#2563EB]/60 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+            >
+              <i data-lucide="fingerprint" class="w-4 h-4"></i>
+              <span id="btn-sign-scope-text">Assinar Digitalmente como Cliente</span>
+            </button>
+
+            <div class="pt-1 flex items-center justify-between text-[11px] font-mono text-slate-400 border-t border-[#1E2538]">
+              <span>IP: 177.45.xxx.xx | SHA-256: 8f9d...3a1b</span>
+              <span class="text-[#10B981]">TLS 1.3 VERIFIED</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ===================================================================
+             RIGHT COLUMN (50%) — AUTOMATED PIX SPLIT ROUTING ENGINE
+             =================================================================== -->
+        <div class="p-6 flex flex-col justify-between space-y-4 bg-[#0D1018]">
+          
+          <div class="space-y-4">
+            <!-- Column Header -->
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="git-fork" class="w-4 h-4 text-[#10B981]"></i>
+                <span>2. Liquidação Instantânea &amp; Split de Fornecedores (Pix)</span>
+              </h3>
+              <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
+                SPLIT AUTOMÁTICO
+              </span>
+            </div>
+
+            <!-- Top Box: Simulated Pix QR Code + Copy/Paste Payload + Total Entry Value -->
+            <div class="neumorphic-card rounded-xl p-3.5 flex items-center gap-4">
+              <!-- Crisp SVG Pix QR Code -->
+              <div class="w-20 h-20 rounded-lg bg-white p-1.5 shrink-0 flex items-center justify-center shadow-md">
+                <svg viewBox="0 0 100 100" class="w-full h-full text-black" fill="currentColor">
+                  <path d="M5,5 h28 v28 h-28 z M11,11 v16 h16 v-16 z M15,15 h8 v8 h-8 z" />
+                  <path d="M67,5 h28 v28 h-28 z M73,11 v16 h16 v-16 z M77,15 h8 v8 h-8 z" />
+                  <path d="M5,67 h28 v28 h-28 z M11,73 v16 h16 v-16 z M15,77 h8 v8 h-8 z" />
+                  <rect x="39" y="5" width="6" height="6" />
+                  <rect x="51" y="5" width="6" height="12" />
+                  <rect x="39" y="17" width="6" height="12" />
+                  <rect x="45" y="29" width="12" height="6" />
+                  <rect x="5" y="39" width="12" height="6" />
+                  <rect x="23" y="45" width="12" height="6" />
+                  <rect x="39" y="39" width="22" height="22" fill="none" stroke="currentColor" stroke-width="5" />
+                  <rect x="47" y="47" width="6" height="6" />
+                  <rect x="67" y="39" width="6" height="12" />
+                  <rect x="79" y="45" width="16" height="6" />
+                  <rect x="39" y="67" width="12" height="6" />
+                  <rect x="57" y="67" width="6" height="16" />
+                  <rect x="69" y="69" width="26" height="6" />
+                  <rect x="69" y="81" width="12" height="14" />
+                  <rect x="87" y="81" width="8" height="14" />
+                </svg>
+              </div>
+
+              <!-- Payload & Value Details -->
+              <div class="flex-1 min-w-0 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    PAGAMENTO ÚNICO DE ENTRADA (PIX ESCROW)
+                  </span>
+                  <span class="font-mono text-sm font-bold text-[#10B981]" id="pix-entry-total">
+                    R$ 218.400,00
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    readonly
+                    value="00020126580014BR.GOV.BCB.PIX0136archflow-split-poa-9942-exec5204000053039865409218400.005802BR"
+                    class="w-full px-2.5 py-1.5 rounded bg-[#08090D] border border-[#1E2538] font-mono text-[10px] text-slate-300 truncate"
+                    aria-label="Código Pix Copia e Cola"
+                  />
+                  <button
+                    type="button"
+                    id="btn-copy-pix"
+                    data-surface-id="pix-copy-payload"
+                    data-tier="pix"
+                    data-price="218400"
+                    data-supplier="Bacen Pix"
+                    data-rt-percent="9.08"
+                    data-layer-url="pix://copy-payload"
+                    class="px-2.5 py-1.5 rounded bg-[#2563EB]/20 hover:bg-[#2563EB]/30 border border-[#2563EB]/50 font-mono text-[10px] font-semibold text-blue-300 shrink-0 transition-colors"
+                  >
+                    COPIAR
+                  </button>
+                </div>
+
+                <p class="text-[10px] font-mono text-slate-400">
+                  CHAVE ESCROW: <span class="text-slate-200">split-engine@archflow.pro</span> · Liquidação Atômica
+                </p>
+              </div>
+            </div>
+
+            <!-- Visual Split Diagram (SVG/CSS Animated Nodes) -->
+            <div class="neumorphic-well rounded-xl p-4 relative overflow-hidden">
+              
+              <!-- Root Origin Node: Pagamento Único do Cliente -->
+              <div class="flex items-center justify-between px-3.5 py-2 rounded-lg bg-[#151924] border border-[#2563EB]/60 shadow-sm">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-[#2563EB] animate-ping"></span>
+                  <span class="font-mono text-xs font-bold text-white">
+                    [Pagamento Único do Cliente]
+                  </span>
+                </div>
+                <span class="font-mono text-xs font-bold text-blue-400">
+                  100% · R$ 218.400,00
+                </span>
+              </div>
+
+              <!-- Animated SVG Branching Connector Pipeline -->
+              <div class="relative pl-6 pt-3 space-y-2.5">
+                <svg
+                  class="absolute left-3 top-0 bottom-4 w-5 h-full pointer-events-none"
+                  viewBox="0 0 24 220"
+                  preserveAspectRatio="none"
+                >
+                  <!-- Base Track Lines -->
+                  <path d="M 4 0 L 4 200 M 4 38 L 22 38 M 4 112 L 22 112 M 4 188 L 22 188" stroke="#1E2538" stroke-width="2" fill="none" />
+                  <!-- Animated Energy Flow Stream -->
+                  <path
+                    id="svg-split-stream"
+                    class="split-flow-line"
+                    d="M 4 0 L 4 200 M 4 38 L 22 38 M 4 112 L 22 112 M 4 188 L 22 188"
+                    stroke="#10B981"
+                    stroke-width="2"
+                    fill="none"
+                  />
+                </svg>
+
+                <!-- Node 1: Fornecedor A - Marmoraria -->
+                <div
+                  id="split-node-supplier-a"
+                  data-surface-id="island"
+                  data-tier="gold"
+                  data-price="24992"
+                  data-supplier="Marmoraria Elite Sul"
+                  data-rt-percent="12"
+                  data-layer-url="split://node-marmoraria"
+                  class="p-2.5 rounded-lg bg-[#151924] border border-[#1E2538] flex items-center justify-between gap-2"
+                >
+                  <div>
+                    <p class="text-xs font-semibold text-white">
+                      Node 1 (Fornecedor A - Marmoraria Elite Sul)
+                    </p>
+                    <p class="font-mono text-[11px] text-slate-400">
+                      88% Líquido (R$ 24.992,00) · <span class="webhook-status-text text-amber-400">Status: Aguardando Webhook</span>
+                    </p>
+                  </div>
+                  <span class="webhook-status-badge px-2 py-0.5 rounded font-mono text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">
+                    PENDING
+                  </span>
+                </div>
+
+                <!-- Node 2: Fornecedor B - Marcenaria & Revestimentos -->
+                <div
+                  id="split-node-supplier-b"
+                  data-surface-id="woodwork"
+                  data-tier="gold"
+                  data-price="86220"
+                  data-supplier="Atelier Nogueira Marcenaria CNC"
+                  data-rt-percent="10"
+                  data-layer-url="split://node-marcenaria"
+                  class="p-2.5 rounded-lg bg-[#151924] border border-[#1E2538] flex items-center justify-between gap-2"
+                >
+                  <div>
+                    <p class="text-xs font-semibold text-white">
+                      Node 2 (Fornecedor B - Marcenaria &amp; Revestimentos)
+                    </p>
+                    <p class="font-mono text-[11px] text-slate-400">
+                      90% Líquido (R$ 173.568,00) · <span class="webhook-status-text text-amber-400">Status: Aguardando Webhook</span>
+                    </p>
+                  </div>
+                  <span class="webhook-status-badge px-2 py-0.5 rounded font-mono text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">
+                    PENDING
+                  </span>
+                </div>
+
+                <!-- Node 3: Cofre do Escritório de Arquitetura — RT Consolidada (Highlighted in Gold/Emerald) -->
+                <div
+                  id="split-node-architect-vault"
+                  data-surface-id="architect-rt-vault"
+                  data-tier="rt-consolidated"
+                  data-price="19840"
+                  data-supplier="Cofre Escritório Arquitetura"
+                  data-rt-percent="100"
+                  data-layer-url="split://node-architect-rt"
+                  class="p-3 rounded-xl bg-gradient-to-r from-[#D97706]/20 via-[#151924] to-[#10B981]/20 border border-[#D97706]/60 shadow-gold-glow flex items-center justify-between gap-2"
+                >
+                  <div>
+                    <div class="flex items-center gap-1.5">
+                      <i data-lucide="vault" class="w-3.5 h-3.5 text-[#D97706]"></i>
+                      <p class="text-xs font-bold text-amber-300">
+                        Node 3 (Cofre do Escritório de Arquitetura — RT Consolidada)
+                      </p>
+                    </div>
+                    <p class="font-mono text-[11px] text-[#10B981] font-semibold mt-0.5">
+                      100% das Comissões Retidas na Fonte (R$ 19.840,00) · Zero Bitributação.
+                    </p>
+                  </div>
+                  <span class="webhook-status-badge px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40 shrink-0">
+                    SPLIT LOCK
+                  </span>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Trigger Button (id="btn-trigger-webhook") -->
+          <div class="space-y-2">
+            <div
+              id="webhook-console-log"
+              class="px-3 py-1.5 rounded-lg bg-[#08090D] border border-[#1E2538] font-mono text-[10px] text-slate-400 flex items-center justify-between"
+            >
+              <span id="webhook-log-line">&gt; LISTENING POST /api/v2/webhooks/bacen-pix-split...</span>
+              <span id="webhook-http-badge" class="text-amber-400 font-bold">IDLE</span>
+            </div>
+
+            <button
+              type="button"
+              id="btn-trigger-webhook"
+              data-surface-id="webhook-simulator"
+              data-tier="settlement-200"
+              data-price="218400"
+              data-supplier="Bacen SPI Webhook"
+              data-rt-percent="9.08"
+              data-layer-url="webhook://simulate-200-ok"
+              class="w-full py-3 px-4 rounded-xl bg-[#10B981] hover:bg-emerald-400 text-[#08090D] font-mono font-bold text-xs uppercase tracking-wider shadow-emerald-glow transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+            >
+              <i data-lucide="zap" class="w-4 h-4"></i>
+              <span id="btn-trigger-webhook-text">Simular Confirmação de Webhook Bancário (200 OK)</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       4. ARCHFLOW // PRO — REACTIVE FRONT-END STATE ENGINE (BIM + PIX SPLIT D+0)
+       ========================================================================= -->
+  <script>
+    (() => {
+      'use strict';
+
+      // Initialize Lucide icons
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+
+      // -----------------------------------------------------------------------
+      // 1. CENTRALIZED REACTIVE STATE STORE
+      // -----------------------------------------------------------------------
+      const BASE_SCOPE_BUDGET = 232600; // Escopo Base de Referência (Ouro inicial = R$ 218.400 -> - R$ 14.200)
+
+      const TIER_LABELS = {
+        gold: { badge: 'OURO', label: 'Padrão Ouro', badgeClass: 'bg-[#2563EB]/25 text-blue-300 border-[#2563EB]/40' },
+        silver: { badge: 'PRATA', label: 'Padrão Prata', badgeClass: 'bg-slate-700/60 text-slate-200 border-slate-500/40' },
+        essential: { badge: 'ESSENCIAL', label: 'Padrão Essencial', badgeClass: 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40' }
+      };
+
+      const state = {
+        role: 'client', // 'client' | 'architect'
+        selectedSurface: 'island',
+        scopeSigned: false,
+        scopeSignatureHash: null,
+        scopeSignedAt: null,
+        webhookSettled: false,
+        surfaces: {
+          island: {
+            id: 'island',
+            title: '01. Ilha Gourmet (14,5m²)',
+            areaLabel: '14,5 m²',
+            techSpec: 'CNC',
+            tier: 'gold',
+            materialName: 'Dekton Laurent',
+            price: 28400,
+            supplier: 'Marmoraria Elite Sul',
+            rtPercent: 12,
+            layerUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85'
+          },
+          floor: {
+            id: 'floor',
+            title: '02. Piso Principal (68,0m²)',
+            areaLabel: '68,0 m²',
+            techSpec: 'Junta 1,5mm',
+            tier: 'gold',
+            materialName: 'Lastra Travertino Navona 120x120',
+            price: 94200,
+            supplier: 'Galeria Revestimentos Sul',
+            rtPercent: 7.27388535, // Exact R$ 6.852,00 on R$ 94.200,00 so total RT = R$ 19.840,00
+            layerUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85'
+          },
+          woodwork: {
+            id: 'woodwork',
+            title: '03. Painel & Marcenaria (24,0m²)',
+            areaLabel: '24,0 m²',
+            techSpec: '5 Eixos',
+            tier: 'gold',
+            materialName: 'Lâmina Natural Freijó Catedral',
+            price: 95800,
+            supplier: 'Atelier Nogueira Marcenaria CNC',
+            rtPercent: 10,
+            layerUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85'
+          }
+        }
+      };
+
+      // Expose state store on window for external backend/API integration
+      window.ArchFlowEngine = {
+        getState: () => structuredClone(state),
+        selectMaterial: (surfaceId, tier) => triggerSwatchSelection(surfaceId, tier),
+        setRole: (role) => applyRoleView(role)
+      };
+
+      // -----------------------------------------------------------------------
+      // 2. CURRENCY & NUMBER FORMATTERS (PT-BR)
+      // -----------------------------------------------------------------------
+      const fmtBRLFull = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+      const fmtBRLCompact = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      });
+
+      function formatBRL(value, decimals = true) {
+        return decimals ? fmtBRLFull.format(value) : fmtBRLCompact.format(value);
+      }
+
+      // Smooth numeric counter animation for top header budget
+      let activeBudgetAnimation = null;
+      function animateCurrencyElement(el, startVal, endVal, duration = 380) {
+        if (!el) return;
+        if (activeBudgetAnimation) cancelAnimationFrame(activeBudgetAnimation);
+        const startTime = performance.now();
+
+        function tick(now) {
+          const progress = Math.min((now - startTime) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3); // cubic ease-out
+          const current = startVal + (endVal - startVal) * eased;
+          el.textContent = formatBRL(current, true);
+          if (progress < 1) {
+            activeBudgetAnimation = requestAnimationFrame(tick);
+          } else {
+            el.textContent = formatBRL(endVal, true);
+            el.setAttribute('data-raw-value', endVal.toFixed(2));
+          }
+        }
+        activeBudgetAnimation = requestAnimationFrame(tick);
+      }
+
+      // -----------------------------------------------------------------------
+      // 3. FINANCIAL & RT SPLIT CALCULATOR
+      // -----------------------------------------------------------------------
+      function computeFinancials() {
+        const s = state.surfaces;
+
+        // Exact RT calculation per surface
+        const islandRT = Math.round(s.island.price * (s.island.rtPercent / 100));
+        const islandNet = s.island.price - islandRT;
+
+        const floorRT = Math.round(s.floor.price * (s.floor.rtPercent / 100));
+        const floorNet = s.floor.price - floorRT;
+
+        const woodworkRT = Math.round(s.woodwork.price * (s.woodwork.rtPercent / 100));
+        const woodworkNet = s.woodwork.price - woodworkRT;
+
+        const totalBudget = s.island.price + s.floor.price + s.woodwork.price;
+        const totalRT = islandRT + floorRT + woodworkRT;
+        const totalNetSuppliers = totalBudget - totalRT;
+        const deltaVsBase = totalBudget - BASE_SCOPE_BUDGET;
+        const consolidatedRtPercent = totalBudget > 0 ? ((totalRT / totalBudget) * 100).toFixed(2) : '0.00';
+
+        return {
+          totalBudget,
+          totalRT,
+          totalNetSuppliers,
+          deltaVsBase,
+          consolidatedRtPercent,
+          perSurface: {
+            island: { price: s.island.price, rt: islandRT, net: islandNet, rtPct: 12, netPct: 88 },
+            floor: { price: s.floor.price, rt: floorRT, net: floorNet, rtPct: 7.3, netPct: 92.7 },
+            woodwork: { price: s.woodwork.price, rt: woodworkRT, net: woodworkNet, rtPct: 10, netPct: 90 }
+          }
+        };
+      }
+
+      // Generate dynamic EMVCo BRCode Pix payload with current consolidated amount
+      function buildPixPayload(amount) {
+        const amtStr = amount.toFixed(2);
+        const amtLen = String(amtStr.length).padStart(2, '0');
+        return `00020126580014BR.GOV.BCB.PIX0136archflow-split-poa-9942-exec52040000530398654${amtLen}${amtStr}5802BR5920ARCHFLOW SPLIT ESCROW6011PORTO ALEGRE62070503***6304E2A9`;
+      }
+
+      // -----------------------------------------------------------------------
+      // 4. DOM SYNCHRONIZATION & RENDER LAYER ENGINE
+      // -----------------------------------------------------------------------
+      const totalBudgetEl = document.getElementById('total-budget-value');
+      const budgetDeltaBadge = document.getElementById('budget-delta-badge');
+      const globalBudgetBox = document.getElementById('global-budget-box');
+      const totalRtValueEl = document.getElementById('total-rt-value');
+      const renderBaseImage = document.getElementById('render-base-image');
+      const renderStage = document.getElementById('render-stage');
+
+      function updateDOM(animateBudget = true) {
+        const fin = computeFinancials();
+        const prevBudget = parseFloat(totalBudgetEl.getAttribute('data-raw-value') || fin.totalBudget);
+
+        // 4.1 Top Header Consolidated Budget & Delta Badge
+        if (animateBudget && prevBudget !== fin.totalBudget) {
+          animateCurrencyElement(totalBudgetEl, prevBudget, fin.totalBudget);
+        } else {
+          totalBudgetEl.textContent = formatBRL(fin.totalBudget, true);
+          totalBudgetEl.setAttribute('data-raw-value', fin.totalBudget.toFixed(2));
+        }
+
+        globalBudgetBox.setAttribute('data-price', fin.totalBudget.toFixed(2));
+        globalBudgetBox.setAttribute('data-rt-percent', fin.consolidatedRtPercent);
+
+        if (fin.deltaVsBase <= 0) {
+          const saved = Math.abs(fin.deltaVsBase);
+          budgetDeltaBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30';
+          budgetDeltaBadge.innerHTML = `<i data-lucide="trending-down" class="w-3 h-3"></i> - ${formatBRL(saved, false)} vs. Escopo Base`;
+        } else {
+          budgetDeltaBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-[#D97706]/20 text-amber-300 border border-[#D97706]/40';
+          budgetDeltaBadge.innerHTML = `<i data-lucide="trending-up" class="w-3 h-3"></i> + ${formatBRL(fin.deltaVsBase, false)} vs. Escopo Base`;
+        }
+
+        // 4.2 Update Hotspot Pins on Canvas
+        ['island', 'floor', 'woodwork'].forEach((surfaceId) => {
+          const surf = state.surfaces[surfaceId];
+          const pin = document.getElementById(`pin-${surfaceId}`);
+          const matLabel = document.getElementById(`pin-${surfaceId}-material-label`);
+          const priceLabel = document.getElementById(`pin-${surfaceId}-price-label`);
+          const tierMeta = TIER_LABELS[surf.tier];
+
+          if (pin) {
+            pin.setAttribute('data-tier', surf.tier);
+            pin.setAttribute('data-price', String(surf.price));
+            pin.setAttribute('data-layer-url', surf.layerUrl);
+
+            // Update tier pill inside pin
+            const pillSpan = pin.querySelector('span.px-1\\.5.py-0\\.5');
+            if (pillSpan && tierMeta) {
+              pillSpan.textContent = tierMeta.badge;
+              pillSpan.className = `px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border ${tierMeta.badgeClass}`;
+            }
+
+            // Highlight currently selected surface pin tag
+            const tagBox = pin.querySelector('div.px-3\\.5.py-2');
+            if (tagBox) {
+              if (state.selectedSurface === surfaceId) {
+                tagBox.classList.add('border-[#2563EB]/80');
+                tagBox.classList.remove('border-[#1E2538]');
+              } else {
+                tagBox.classList.remove('border-[#2563EB]/80');
+                tagBox.classList.add('border-[#1E2538]');
+              }
+            }
+          }
+
+          if (matLabel) {
+            matLabel.textContent = surfaceId === 'island'
+              ? `${surf.materialName} (${surf.areaLabel})`
+              : surf.materialName;
+          }
+          if (priceLabel) {
+            priceLabel.textContent = formatBRL(surf.price, false);
+          }
+        });
+
+        // 4.3 Update Specification Cards & Secret Architect RT Panels
+        ['island', 'floor', 'woodwork'].forEach((surfaceId) => {
+          const surf = state.surfaces[surfaceId];
+          const surfFin = fin.perSurface[surfaceId];
+          const card = document.getElementById(`spec-card-${surfaceId}`);
+          if (!card) return;
+
+          card.setAttribute('data-tier', surf.tier);
+          card.setAttribute('data-price', String(surf.price));
+          card.setAttribute('data-layer-url', surf.layerUrl);
+          card.setAttribute('data-selected', state.selectedSurface === surfaceId ? 'true' : 'false');
+
+          // Update Architect Secret RT Panel inside Card
+          const rtPanel = card.querySelector('.architect-rt-panel');
+          if (rtPanel) {
+            rtPanel.setAttribute('data-tier', surf.tier);
+            rtPanel.setAttribute('data-price', String(surf.price));
+            const strongTags = rtPanel.querySelectorAll('strong');
+            if (strongTags.length >= 2) {
+              strongTags[0].textContent = `${surfFin.netPct.toString().replace('.', ',')}% (${formatBRL(surfFin.net, false)})`;
+              strongTags[1].textContent = `${surfFin.rtPct.toString().replace('.', ',')}% (${formatBRL(surfFin.rt, false)})`;
+            }
+          }
+
+          // Update Swatch Buttons visual state
+          card.querySelectorAll('.swatch-btn').forEach((btn) => {
+            const isSelected = btn.getAttribute('data-tier') === surf.tier;
+            btn.setAttribute('data-active', isSelected ? 'true' : 'false');
+
+            const dot = btn.querySelector('span.w-2.h-2.rounded-full');
+            const priceSpan = btn.querySelector('div.mt-2 span.font-mono');
+            if (dot) {
+              dot.className = isSelected
+                ? 'w-2 h-2 rounded-full bg-[#2563EB] shadow-[0_0_8px_#2563EB]'
+                : 'w-2 h-2 rounded-full bg-slate-700 group-hover:bg-slate-500';
+            }
+            if (priceSpan) {
+              priceSpan.className = isSelected
+                ? 'font-mono text-xs font-bold text-blue-400'
+                : 'font-mono text-xs font-bold text-slate-300';
+            }
+          });
+        });
+
+        // 4.4 Sticky Footer Consolidated RT & Checkout Trigger
+        if (totalRtValueEl) {
+          totalRtValueEl.textContent = formatBRL(fin.totalRT, true);
+        }
+        const btnOpenModal = document.getElementById('btn-open-approval-modal');
+        if (btnOpenModal) {
+          btnOpenModal.setAttribute('data-price', String(fin.totalBudget));
+          btnOpenModal.setAttribute('data-rt-percent', fin.consolidatedRtPercent);
+        }
+
+        // 4.5 Sync Scope-Freeze & Pix Split Modal Table & Nodes
+        syncModalDOM(fin);
+
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      }
+
+      function syncModalDOM(fin) {
+        // Left Column: Legal Scope-Freeze Table
+        ['island', 'floor', 'woodwork'].forEach((surfaceId) => {
+          const surf = state.surfaces[surfaceId];
+          const tierMeta = TIER_LABELS[surf.tier];
+          const matEl = document.getElementById(`modal-mat-${surfaceId}`);
+          const priceEl = document.getElementById(`modal-price-${surfaceId}`);
+          const rowEl = document.querySelector(`#modal-scope-split tr[data-surface-id="${surfaceId}"]`);
+
+          if (matEl) {
+            matEl.textContent = surf.materialName;
+            const subSpan = matEl.nextElementSibling;
+            if (subSpan && tierMeta) {
+              subSpan.textContent = `${tierMeta.label} · ${surf.techSpec}`;
+            }
+          }
+          if (priceEl) {
+            priceEl.textContent = formatBRL(surf.price, true);
+          }
+          if (rowEl) {
+            rowEl.setAttribute('data-tier', surf.tier);
+            rowEl.setAttribute('data-price', String(surf.price));
+          }
+        });
+
+        const modalTotalEl = document.getElementById('modal-total-price');
+        if (modalTotalEl) {
+          modalTotalEl.textContent = formatBRL(fin.totalBudget, true);
+        }
+
+        // Right Column: Pix QR Payload & Entry Total
+        const pixEntryTotalEl = document.getElementById('pix-entry-total');
+        if (pixEntryTotalEl) {
+          pixEntryTotalEl.textContent = formatBRL(fin.totalBudget, true);
+        }
+
+        const pixInput = document.querySelector('#modal-scope-split input[readonly]');
+        if (pixInput) {
+          pixInput.value = buildPixPayload(fin.totalBudget);
+        }
+
+        // Root Origin Node
+        const rootOriginNode = document.querySelector('#modal-scope-split .neumorphic-well > div:first-child span:last-child');
+        if (rootOriginNode) {
+          rootOriginNode.textContent = `100% · ${formatBRL(fin.totalBudget, true)}`;
+        }
+
+        // Node 1: Marmoraria Elite Sul (Island Net)
+        const nodeA = document.getElementById('split-node-supplier-a');
+        if (nodeA) {
+          const islandNet = fin.perSurface.island.net;
+          nodeA.setAttribute('data-tier', state.surfaces.island.tier);
+          nodeA.setAttribute('data-price', String(islandNet));
+          const pSub = nodeA.querySelector('p.font-mono');
+          if (pSub) {
+            const statusHtml = state.webhookSettled
+              ? '<span class="webhook-status-text text-[#10B981] font-semibold">Status: Liquidado via Pix Split (200 OK)</span>'
+              : '<span class="webhook-status-text text-amber-400">Status: Aguardando Webhook</span>';
+            pSub.innerHTML = `88% Líquido (${formatBRL(islandNet, true)}) · ${statusHtml}`;
+          }
+        }
+
+        // Node 2: Marcenaria & Revestimentos (Floor Net + Woodwork Net)
+        const nodeB = document.getElementById('split-node-supplier-b');
+        if (nodeB) {
+          const combinedNet = fin.perSurface.floor.net + fin.perSurface.woodwork.net;
+          const combinedGross = fin.perSurface.floor.price + fin.perSurface.woodwork.price;
+          const combinedNetPct = combinedGross > 0 ? ((combinedNet / combinedGross) * 100).toFixed(1).replace('.0', '') : '90';
+          nodeB.setAttribute('data-tier', state.surfaces.woodwork.tier);
+          nodeB.setAttribute('data-price', String(combinedNet));
+          const pSub = nodeB.querySelector('p.font-mono');
+          if (pSub) {
+            const statusHtml = state.webhookSettled
+              ? '<span class="webhook-status-text text-[#10B981] font-semibold">Status: Liquidado via Pix Split (200 OK)</span>'
+              : '<span class="webhook-status-text text-amber-400">Status: Aguardando Webhook</span>';
+            pSub.innerHTML = `${combinedNetPct}% Líquido (${formatBRL(combinedNet, true)}) · ${statusHtml}`;
+          }
+        }
+
+        // Node 3: Architect RT Vault
+        const nodeVault = document.getElementById('split-node-architect-vault');
+        if (nodeVault) {
+          nodeVault.setAttribute('data-price', String(fin.totalRT));
+          const pVault = nodeVault.querySelector('p.font-mono');
+          if (pVault) {
+            pVault.textContent = `100% das Comissões Retidas na Fonte (${formatBRL(fin.totalRT, true)}) · Zero Bitributação.`;
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // 5. INTERACTIVE MATERIAL SWAP & VIEWPORT LAYER TRANSITION
+      // -----------------------------------------------------------------------
+      function triggerSwatchSelection(surfaceId, tier) {
+        const card = document.getElementById(`spec-card-${surfaceId}`);
+        if (!card) return;
+        const btn = card.querySelector(`.swatch-btn[data-tier="${tier}"]`);
+        if (!btn) return;
+
+        const price = parseFloat(btn.getAttribute('data-price') || '0');
+        const materialName = btn.getAttribute('data-material-name') || '';
+        const supplier = btn.getAttribute('data-supplier') || '';
+        const layerUrl = btn.getAttribute('data-layer-url') || '';
+
+        // Update state
+        state.selectedSurface = surfaceId;
+        state.surfaces[surfaceId].tier = tier;
+        state.surfaces[surfaceId].price = price;
+        state.surfaces[surfaceId].materialName = materialName;
+        state.surfaces[surfaceId].supplier = supplier;
+        state.surfaces[surfaceId].layerUrl = layerUrl;
+
+        // If scope was previously signed, invalidate signature on material change (Anti-Rework Lock)
+        if (state.scopeSigned) {
+          resetScopeSignature('ESCOPO ALTERADO — REASSINATURA REQUERIDA');
+        }
+
+        // Update viewport base image if URL changed & apply subtle PBR transition pulse
+        if (renderBaseImage && layerUrl && renderBaseImage.src !== layerUrl) {
+          renderBaseImage.style.opacity = '0.72';
+          setTimeout(() => {
+            renderBaseImage.src = layerUrl;
+            renderBaseImage.style.opacity = '1';
+          }, 140);
+        }
+
+        renderStage.setAttribute('data-tier', tier);
+        renderStage.setAttribute('data-price', String(computeFinancials().totalBudget));
+        renderStage.setAttribute('data-layer-url', layerUrl);
+
+        updateDOM(true);
+      }
+
+      // Wire all Swatch Buttons
+      document.querySelectorAll('.swatch-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          const surfaceId = button.getAttribute('data-surface-id');
+          const tier = button.getAttribute('data-tier');
+          triggerSwatchSelection(surfaceId, tier);
+        });
+      });
+
+      // Wire Hotspot Pins to focus & scroll to corresponding Specification Card
+      document.querySelectorAll('.surface-hotspot-pin').forEach((pin) => {
+        pin.addEventListener('click', () => {
+          const surfaceId = pin.getAttribute('data-surface-id');
+          state.selectedSurface = surfaceId;
+          updateDOM(false);
+
+          const targetCard = document.getElementById(`spec-card-${surfaceId}`);
+          if (targetCard) {
+            targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
+      });
+
+      // -----------------------------------------------------------------------
+      // 6. ROLE VIEW SWITCHER (CLIENT PRESENTATION VS. ARCHITECT RT X-RAY)
+      // -----------------------------------------------------------------------
+      const roleButtons = document.querySelectorAll('#role-switcher .role-tab-btn');
+      const architectPanels = document.querySelectorAll('.architect-rt-panel');
+
+      function applyRoleView(selectedRole) {
+        state.role = selectedRole;
+
+        roleButtons.forEach((b) => {
+          const isCurrent = b.getAttribute('data-role') === selectedRole;
+          if (isCurrent) {
+            b.className = 'role-tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 bg-[#2563EB] text-white shadow-[0_0_15px_rgba(37,99,235,0.45)]';
+          } else {
+            b.className = 'role-tab-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 text-slate-400 hover:text-amber-300';
+          }
+        });
+
+        architectPanels.forEach((panel) => {
+          panel.classList.toggle('hidden', selectedRole !== 'architect');
+        });
+      }
+
+      roleButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          applyRoleView(btn.getAttribute('data-role'));
+        });
+      });
+
+      // -----------------------------------------------------------------------
+      // 7. VIEWPORT HUD LAYER TOGGLES (CLAY HOLD, BIM MEP X-RAY & SCRUBBER)
+      // -----------------------------------------------------------------------
+      const btnClayMode = document.getElementById('toggle-clay-mode');
+      const btnBimXray = document.getElementById('toggle-bim-xray');
+      const bimXrayOverlay = document.getElementById('bim-xray-overlay');
+      const cadSliderInput = document.getElementById('cad-render-range-input');
+      const clayComparisonLayer = document.getElementById('clay-comparison-layer');
+      const scrubberBadge = document.getElementById('scrubber-percentage-badge');
+
+      const enableClay = () => renderStage.classList.add('clay-mode-active');
+      const disableClay = () => renderStage.classList.remove('clay-mode-active');
+
+      btnClayMode.addEventListener('mousedown', enableClay);
+      btnClayMode.addEventListener('mouseup', disableClay);
+      btnClayMode.addEventListener('mouseleave', disableClay);
+      btnClayMode.addEventListener('touchstart', enableClay, { passive: true });
+      btnClayMode.addEventListener('touchend', disableClay);
+
+      btnBimXray.addEventListener('click', () => {
+        const isHidden = bimXrayOverlay.classList.toggle('hidden');
+        btnBimXray.setAttribute('data-active', (!isHidden).toString());
+        btnBimXray.classList.toggle('border-[#10B981]', !isHidden);
+        btnBimXray.classList.toggle('text-white', !isHidden);
+      });
+
+      cadSliderInput.addEventListener('input', (e) => {
+        const renderPercent = Number(e.target.value);
+        clayComparisonLayer.style.clipPath = `inset(0 ${renderPercent}% 0 0)`;
+        scrubberBadge.textContent = `${renderPercent}% PBR`;
+      });
+
+      // -----------------------------------------------------------------------
+      // 8. CRYPTOGRAPHIC SCOPE-LOCK (SHA-256) & PIX SPLIT WEBHOOK ENGINE
+      // -----------------------------------------------------------------------
+      const modalScopeSplit = document.getElementById('modal-scope-split');
+      const btnOpenModal = document.getElementById('btn-open-approval-modal');
+      const btnCloseModal = document.getElementById('btn-close-modal');
+      const btnSignScope = document.getElementById('btn-sign-scope');
+      const btnSignScopeText = document.getElementById('btn-sign-scope-text');
+      const signatureStatusPill = document.getElementById('signature-status-pill');
+      const signatureBox = document.getElementById('signature-box');
+      const btnCopyPix = document.getElementById('btn-copy-pix');
+      const btnTriggerWebhook = document.getElementById('btn-trigger-webhook');
+      const btnTriggerWebhookText = document.getElementById('btn-trigger-webhook-text');
+      const webhookLogLine = document.getElementById('webhook-log-line');
+      const webhookHttpBadge = document.getElementById('webhook-http-badge');
+
+      function openModal() {
+        updateDOM(false);
+        modalScopeSplit.classList.remove('hidden');
+        modalScopeSplit.classList.add('flex');
+      }
+
+      function closeModal() {
+        modalScopeSplit.classList.add('hidden');
+        modalScopeSplit.classList.remove('flex');
+      }
+
+      btnOpenModal.addEventListener('click', openModal);
+      btnCloseModal.addEventListener('click', closeModal);
+      modalScopeSplit.addEventListener('click', (e) => {
+        if (e.target === modalScopeSplit) closeModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modalScopeSplit.classList.contains('hidden')) {
+          closeModal();
+        }
+      });
+
+      // Compute real SHA-256 hash using Web Crypto API
+      async function generateScopeSHA256() {
+        const fin = computeFinancials();
+        const canonicalPayload = JSON.stringify({
+          project: 'POA-9942-EXEC',
+          timestamp: new Date().toISOString(),
+          totalBudget: fin.totalBudget,
+          totalRT: fin.totalRT,
+          surfaces: state.surfaces
+        });
+
+        if (window.crypto && window.crypto.subtle) {
+          const msgBuffer = new TextEncoder().encode(canonicalPayload);
+          const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+        }
+        // Fallback deterministic hex
+        return '8f9d4c2e7b1a6053c9d8e2f4a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d9e1f23a1b';
+      }
+
+      function resetScopeSignature(reasonText = 'AGUARDANDO RUBRICA') {
+        state.scopeSigned = false;
+        state.scopeSignatureHash = null;
+        state.webhookSettled = false;
+
+        signatureStatusPill.textContent = reasonText;
+        signatureStatusPill.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30';
+        btnSignScopeText.textContent = 'Assinar Digitalmente como Cliente';
+        btnSignScope.className = 'w-full py-2.5 px-4 rounded-lg bg-[#151924] hover:bg-[#2563EB] text-white border border-[#2563EB]/60 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-sm';
+
+        // Reset webhook badges
+        webhookLogLine.textContent = '> LISTENING POST /api/v2/webhooks/bacen-pix-split...';
+        webhookLogLine.className = 'text-slate-400';
+        webhookHttpBadge.textContent = 'IDLE';
+        webhookHttpBadge.className = 'text-amber-400 font-bold';
+
+        document.querySelectorAll('#split-node-supplier-a .webhook-status-badge, #split-node-supplier-b .webhook-status-badge').forEach((badge) => {
+          badge.textContent = 'PENDING';
+          badge.className = 'webhook-status-badge px-2 py-0.5 rounded font-mono text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0';
+        });
+      }
+
+      btnSignScope.addEventListener('click', async () => {
+        const fullHash = await generateScopeSHA256();
+        const shortHash = `${fullHash.slice(0, 8)}...${fullHash.slice(-6)}`;
+        const nowStr = new Date().toLocaleTimeString('pt-BR');
+
+        state.scopeSigned = true;
+        state.scopeSignatureHash = fullHash;
+        state.scopeSignedAt = new Date().toISOString();
+
+        signatureStatusPill.textContent = 'ASSINADO ICP-SHA256';
+        signatureStatusPill.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40';
+        btnSignScopeText.textContent = `Escopo Travado Digitalmente (${shortHash})`;
+        btnSignScope.className = 'w-full py-2.5 px-4 rounded-lg bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/50 font-semibold text-xs transition-all flex items-center justify-center gap-2';
+
+        const auditFooterSpan = signatureBox.querySelector('div.pt-1 span:first-child');
+        if (auditFooterSpan) {
+          auditFooterSpan.textContent = `IP: 177.45.192.84 | SHA-256: ${shortHash} | ${nowStr}`;
+        }
+        signatureBox.setAttribute('data-sha256', fullHash);
+      });
+
+      // Copy Pix Payload to Clipboard
+      if (btnCopyPix) {
+        btnCopyPix.addEventListener('click', async () => {
+          const pixInput = document.querySelector('#modal-scope-split input[readonly]');
+          if (!pixInput) return;
+          try {
+            await navigator.clipboard.writeText(pixInput.value);
+          } catch (_) {
+            pixInput.select();
+          }
+          const originalText = btnCopyPix.textContent;
+          btnCopyPix.textContent = 'COPIADO!';
+          btnCopyPix.classList.add('bg-[#10B981]/30', 'text-[#10B981]', 'border-[#10B981]/50');
+          setTimeout(() => {
+            btnCopyPix.textContent = originalText;
+            btnCopyPix.classList.remove('bg-[#10B981]/30', 'text-[#10B981]', 'border-[#10B981]/50');
+          }, 1800);
+        });
+      }
+
+      // Simulate Bacen SPI Webhook (200 OK) & Atomic 3-Way Pix Split
+      btnTriggerWebhook.addEventListener('click', async () => {
+        // Ensure scope is signed before or during settlement
+        if (!state.scopeSigned) {
+          btnSignScope.click();
+        }
+
+        const fin = computeFinancials();
+        const e2eId = `E90400888${Date.now().toString().slice(-8)}`;
+
+        webhookLogLine.textContent = '> VALIDATING SPI SIGNATURE & EXECUTING ATOMIC 3-WAY PIX SPLIT...';
+        webhookLogLine.className = 'text-amber-300';
+        webhookHttpBadge.textContent = 'PROCESSING';
+
+        setTimeout(() => {
+          state.webhookSettled = true;
+
+          webhookLogLine.textContent = `> 200 OK · SPI ${e2eId} · R$ ${fin.totalBudget.toLocaleString('pt-BR')} LIQUIDADO EM 3 CONTAS`;
+          webhookLogLine.className = 'text-[#10B981] font-semibold';
+          webhookHttpBadge.textContent = '200 OK';
+          webhookHttpBadge.className = 'text-[#10B981] font-bold';
+
+          document.querySelectorAll('.webhook-status-text').forEach((el) => {
+            el.textContent = 'Status: Liquidado via Pix Split (200 OK)';
+            el.className = 'webhook-status-text text-[#10B981] font-semibold';
+          });
+
+          document.querySelectorAll('.webhook-status-badge').forEach((badge) => {
+            badge.textContent = 'SETTLED 200';
+            badge.className = 'webhook-status-badge px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40 shrink-0';
+          });
+
+          btnTriggerWebhookText.textContent = `Split Liquidado com Sucesso (${e2eId})`;
+        }, 420);
+      });
+
+      // Initial render sync
+      updateDOM(false);
+    })();
+  </script>
+</body>
+</html>
